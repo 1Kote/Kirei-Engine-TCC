@@ -4,26 +4,24 @@
     "/Users/danielnascimento/Desktop"
   ],
   "seitonRules": [
-    {
-      "name": "Documentos",
-      "extensions": ["pdf", "docx", "pptx", "xlsx", "txt", "pages"],
-      "destination": "/Users/danielnascimento/Documents/KireiEngine_Organizados/Documentos"
-    },
-    {
-      "name": "Imagens",
-      "extensions": ["png", "jpg", "jpeg", "gif", "bmp", "heic"],
-      "destination": "/Users/danielnascimento/Pictures/KireiEngine_Organizados/Imagens"
-    },
-    {
-      "name": "Instaladores",
-      "extensions": ["dmg", "pkg", "zip"],
-      "destination": "/Users/danielnascimento/Downloads/KireiEngine_Organizados/Instaladores"
-    }
+
   ],
   "seiriConfig": {
+    "enabled": true,
+    "initialDelay": 1,
+    "period": 24,
+    "timeUnit": "HOURS",
+    "rules": {
 
+    }
   },
   "seisoConfig": {
+    "enabled": true,
+    "initialDelay": 6,
+    "period": 7,
+    "timeUnit": "DAYS",
+    "rules": {
 
+    }
   }
 }
