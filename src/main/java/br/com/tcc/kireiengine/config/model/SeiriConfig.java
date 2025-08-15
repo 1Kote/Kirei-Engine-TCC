@@ -1,6 +1,6 @@
 package br.com.tcc.kireiengine.config.model;
 
-public class SieiriConfig
+public class SeiriConfig
 {
 
 
