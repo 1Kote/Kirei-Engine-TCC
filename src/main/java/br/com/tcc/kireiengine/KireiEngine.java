@@ -3,22 +3,19 @@ package br.com.tcc.kireiengine;
 import br.com.tcc.kireiengine.config.ConfigLoader;
 import br.com.tcc.kireiengine.config.model.Configuration;
 import br.com.tcc.kireiengine.service.FileWatcherService;
+import br.com.tcc.kireiengine.service.ScheduledTaskService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
 public class KireiEngine
 {
     private static final Logger logger = LogManager.getLogger(KireiEngine.class);
     private static final String CONFIG_FILE_PATH = "src/main/resources/config.json";
     public static void main(String[] args)
     {
-        Runtime.getRuntime().addShutdownHook(new Thread(() ->
-        {
-            logger.info("========================================");
-            logger.info("    Kirei Engine - Encerrando Serviço     ");
-            logger.info("========================================");
-        }));
+        final ScheduledTaskService scheduledTaskService;
 
         logger.info("========================================");
         logger.info("    Kirei Engine - Iniciando Serviço    ");
@@ -35,13 +32,28 @@ public class KireiEngine
             System.exit(1);
         }
 
+        scheduledTaskService = new ScheduledTaskService(config);
+        scheduledTaskService.startScheduler();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() ->
+        {
+            logger.info("========================================");
+            logger.info("    Kirei Engine - Encerrando Serviço     ");
+            logger.info("========================================");
+            
+            if (scheduledTaskService != null)
+            {
+                scheduledTaskService.stopScheduler();
+            }
+        }));
+
         logger.info("Configuração carregada com sucesso! {} regras de Seiton encontradas", config.getSeitonRules().size());
 
         FileWatcherService watcherService = new FileWatcherService(config);
         watcherService.startWatching();
 
 
-        logger.info("Kirei Engine foi encerrado.");
+        logger.info("Kirei Engine foi encerrado de forma inesperada.");
 
     }
 }
