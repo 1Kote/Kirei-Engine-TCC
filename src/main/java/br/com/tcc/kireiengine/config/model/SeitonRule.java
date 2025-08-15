@@ -22,20 +22,4 @@ public class SeitonRule
         return destination;
     }
 
-    //Setters
-    public void setName(String name)
-    {
-        this.name = name;
-    }
-
-    public void setExtensions(List<String> extensions)
-    {
-        this.extensions = extensions;
-    }
-
-    public void setDestination(String destination)
-    {
-        this.destination = destination;
-    }
-
 }
