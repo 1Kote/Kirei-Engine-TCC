@@ -2,6 +2,7 @@ package br.com.tcc.kireiengine;
 
 import br.com.tcc.kireiengine.config.ConfigLoader;
 import br.com.tcc.kireiengine.config.model.Configuration;
+import br.com.tcc.kireiengine.service.FileWatcherService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
@@ -12,6 +13,13 @@ public class KireiEngine
     private static final String CONFIG_FILE_PATH = "src/main/resources/config.json";
     public static void main(String[] args)
     {
+        Runtime.getRuntime().addShutdownHook(new Thread(() ->
+        {
+            logger.info("========================================");
+            logger.info("    Kirei Engine - Encerrando Serviço     ");
+            logger.info("========================================");
+        }));
+
         logger.info("========================================");
         logger.info("    Kirei Engine - Iniciando Serviço    ");
         logger.info("========================================");
@@ -29,8 +37,11 @@ public class KireiEngine
 
         logger.info("Configuração carregada com sucesso! {} regras de Seiton encontradas", config.getSeitonRules().size());
 
-        logger.info("Kirei Engine está em execução");
+        FileWatcherService watcherService = new FileWatcherService(config);
+        watcherService.startWatching();
 
+
+        logger.info("Kirei Engine foi encerrado.");
 
     }
 }
