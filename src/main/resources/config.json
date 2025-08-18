@@ -38,5 +38,20 @@
     "initialDelay": 1,
     "period": 2,
     "timeUnit": "MINUTES"
+  },
+  "seisoConfig": {
+    "enabled": true,
+    "initialDelay": 1,
+    "period": 2,
+    "timeUnit": "MINUTES",
+    "rules": {
+      "cleanTemporaryFolders": {
+        "enabled": true,
+        "folders": [
+          "/private/var/folders",
+          "/Users/danielnascimento/Library/Caches"
+        ]
+      }
+    }
   }
 }
