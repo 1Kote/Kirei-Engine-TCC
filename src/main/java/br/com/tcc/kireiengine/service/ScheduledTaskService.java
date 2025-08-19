@@ -1,13 +1,11 @@
 package br.com.tcc.kireiengine.service;
 
-import br.com.tcc.kireiengine.config.model.Configuration;
-import br.com.tcc.kireiengine.config.model.MoveFilesRule;
-import br.com.tcc.kireiengine.config.model.SeiriConfig;
-import br.com.tcc.kireiengine.config.model.SeisoConfig;
+import br.com.tcc.kireiengine.config.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +42,8 @@ public class ScheduledTaskService
             };
             scheduler.scheduleAtFixedRate(seiriTask, seiriConfig.getInitialDelay(), seiriConfig.getPeriod(), seiriConfig.getTimeUnit());
             logger.info("Tarefa de Seiri agendada para executar a cada {} {}", seiriConfig.getPeriod(), seiriConfig.getTimeUnit());
-        } else
+        }
+        else
         {
             logger.info("Tarefa de Seiri está desabilitada na configuração.");
         }
@@ -57,12 +56,14 @@ public class ScheduledTaskService
         {
             Runnable seisoTask = () ->
             {
-                logger.info("[TAREFA AGENDADA] Executando verificação de Seisō...");
-
+                logger.info("[TAREFA AGENDADA] Iniciando verificação de Seisō...");
+                cleanTemporaryFolders(seisoConfig);
+                logger.info("[TAREFA AGENDADA] Verificação de Seisō concluída.");
             };
             scheduler.scheduleAtFixedRate(seisoTask, seisoConfig.getInitialDelay(), seisoConfig.getPeriod(), seisoConfig.getTimeUnit());
             logger.info("Tarefa de Seisō agendada para executar a cada {} {}", seisoConfig.getPeriod(), seisoConfig.getTimeUnit());
-        } else
+        }
+        else
         {
             logger.info("Tarefa de Seisō está desabilitada na configuração.");
         }
@@ -80,7 +81,7 @@ public class ScheduledTaskService
         if (!rule.isEnabled())
         {
             logger.info("SEIRI: A regra para mover ficheiros antigos está desabilitada.");
-            return; // Se a regra está desabilitada, não faz nada.
+            return;
         }
 
         long daysInMillis = TimeUnit.DAYS.toMillis(rule.getDays());
@@ -96,7 +97,8 @@ public class ScheduledTaskService
                         .filter(Files::isRegularFile)
                         .forEach(path ->
                         {
-                            try {
+                            try
+                            {
                                 long lastModifiedTime = Files.getLastModifiedTime(path).toMillis();
                                 if ((currentTime - lastModifiedTime) > daysInMillis)
                                 {
@@ -115,6 +117,53 @@ public class ScheduledTaskService
         }
     }
 
+    private void cleanTemporaryFolders(SeisoConfig seisoConfig)
+    {
+        if (seisoConfig.getRules() == null || seisoConfig.getRules().getCleanTemporaryFolders() == null) {
+            logger.warn("SEISŌ: Regras de limpeza de pastas temporárias não definidas. A tarefa será ignorada.");
+            return;
+        }
+
+        CleanTemporaryFoldersRule rule = seisoConfig.getRules().getCleanTemporaryFolders();
+        if (!rule.isEnabled())
+        {
+            logger.info("SEISŌ: A regra para limpar pastas temporárias está desabilitada.");
+            return;
+        }
+
+        logger.info("SEISŌ: Iniciando limpeza de pastas temporárias...");
+        for (String folderPath : rule.getFolders())
+        {
+            Path path = Paths.get(folderPath);
+            if (Files.notExists(path))
+            {
+                logger.warn("SEISŌ: O diretório especificado para limpeza não existe: {}", path);
+                continue;
+            }
+
+            try
+            {
+                Files.walk(path)
+                        .sorted(Comparator.reverseOrder())
+                        .filter(p -> !p.equals(path))
+                        .forEach(p ->
+                        {
+                            try
+                            {
+                                Files.delete(p);
+                                logger.info("SEISŌ: Apagado {}", p);
+                            } catch (IOException e)
+                            {
+                                logger.error("SEISŌ: Falha ao apagar {}. Pode estar em uso.", p);
+                            }
+                        });
+                logger.info("SEISŌ: Limpeza concluída para a pasta {}", path);
+            } catch (IOException e)
+            {
+                logger.error("SEISŌ: Erro ao tentar limpar a pasta {}", path, e);
+            }
+        }
+    }
 
     private void moveFile(Path source, String destinationFolder)
     {
@@ -144,7 +193,8 @@ public class ScheduledTaskService
             {
                 scheduler.shutdownNow();
             }
-        } catch (InterruptedException e)
+        }
+        catch (InterruptedException e)
         {
             scheduler.shutdownNow();
             Thread.currentThread().interrupt();
