@@ -39,12 +39,15 @@
     "period": 2,
     "timeUnit": "MINUTES",
     "rules": {
-      "cleanTemporaryFolders": {
+      "emptyTrash": {
+        "enabled": true
+      },
+      "organizeTemporaryFiles": {
         "enabled": true,
-        "folders": [
-          "/private/var/folders",
+        "sources": [
           "/Users/danielnascimento/Library/Caches"
-        ]
+        ],
+        "destination": "/Users/danielnascimento/Documents/KireiEngine_Recuperados"
       }
     }
   }
