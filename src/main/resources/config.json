@@ -37,12 +37,6 @@
     "enabled": true,
     "initialDelay": 1,
     "period": 2,
-    "timeUnit": "MINUTES"
-  },
-  "seisoConfig": {
-    "enabled": true,
-    "initialDelay": 1,
-    "period": 2,
     "timeUnit": "MINUTES",
     "rules": {
       "cleanTemporaryFolders": {
