@@ -5,7 +5,7 @@ import br.com.tcc.kireiengine.config.model.SeiriConfig;
 import br.com.tcc.kireiengine.config.model.SeisoConfig;
 import br.com.tcc.kireiengine.strategy.ScheduledTaskStrategy;
 import br.com.tcc.kireiengine.strategy.SeiriOldFilesStrategy;
-// (Futuramente, importaremos aqui as estratégias de Seisō)
+import br.com.tcc.kireiengine.strategy.SeisoTempFoldersStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,11 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Serviço responsável por agendar e executar tarefas periódicas (Seiri, Seisō).
- * Utiliza o Padrão Strategy para desacoplar a lógica de agendamento da lógica
- * de execução das regras de negócio.
+ * Serviço para agendar tarefas Seiri/Seiso usando Strategy Pattern
  */
 public class ScheduledTaskService
 {
@@ -50,9 +49,8 @@ public class ScheduledTaskService
      */
     private void initializeStrategies()
     {
-        // Adiciona a estratégia de verificação de arquivos antigos à lista de tarefas do Seiri.
         this.seiriTasks.add(new SeiriOldFilesStrategy());
-        // (Futuramente, adicionaremos aqui as estratégias do Seisō, como new SeisoEmptyTrashStrategy()).
+        this.seisoTasks.add(new SeisoTempFoldersStrategy()); // CORREÇÃO: Adiciona strategy faltante
     }
 
     /**
@@ -76,60 +74,84 @@ public class ScheduledTaskService
     {
         // Obtém a configuração específica do Seiri.
         SeiriConfig seiriConfig = config.getSeiriConfig();
-        // Condicional para verificar se o módulo Seiri está habilitado na configuração.
+
+        //Validação se Seiri está habilitado
         if (seiriConfig != null && seiriConfig.isEnabled())
         {
             // Cria um Runnable (uma tarefa) que irá executar TODAS as estratégias da lista seiriTasks.
             Runnable seiriMasterTask = () ->
             {
-                // Log de início da execução do conjunto de tarefas Seiri.
-                logger.info("[AGENDADOR] Executando conjunto de tarefas Seiri...");
-                // Itera sobre cada estratégia na lista de tarefas Seiri.
+                logger.info("[AGENDADOR] Executando tarefas Seiri...");
+
+                //Execução de todas as strategies de Seiri
                 for (ScheduledTaskStrategy task : seiriTasks)
                 {
-                    // Manda a estratégia executar sua lógica.
-                    task.execute(config);
+                    try
+                    {
+                        task.execute(config);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error("Erro executando tarefa Seiri: {}", task.getClass().getSimpleName(), e);
+                    }
                 }
             };
 
-            // Agenda a tarefa principal do Seiri para ser executada nos intervalos definidos no config.json.
-            scheduler.scheduleAtFixedRate(seiriMasterTask, seiriConfig.getInitialDelay(), seiriConfig.getPeriod(), seiriConfig.getTimeUnit());
-            // Log para confirmar o agendamento.
-            logger.info("Conjunto de tarefas Seiri agendado para executar a cada {} {}", seiriConfig.getPeriod(), seiriConfig.getTimeUnit());
-        } else
+            scheduler.scheduleAtFixedRate(
+                    seiriMasterTask,
+                    seiriConfig.getInitialDelay(),
+                    seiriConfig.getPeriod(),
+                    seiriConfig.getTimeUnit()
+            );
+
+            logger.info("Seiri agendado: {} {}", seiriConfig.getPeriod(), seiriConfig.getTimeUnit());
+        }
+        else
         {
-            // Log para informar que o módulo Seiri está desabilitado.
-            logger.info("Módulo de tarefas Seiri está desabilitado na configuração.");
+            logger.info("Seiri desabilitado.");
         }
     }
 
     /**
-     * Agenda a execução de todas as estratégias de Seisō.
+     * Agenda tarefas Seiso
      */
     private void scheduleSeisoTasks()
     {
         // Obtém a configuração específica do Seisō.
         SeisoConfig seisoConfig = config.getSeisoConfig();
-        // Condicional para verificar se o módulo Seisō está habilitado na configuração.
+
+        //Validação se Seiso está habilitado
         if (seisoConfig != null && seisoConfig.isEnabled())
         {
             // Cria um Runnable que irá executar TODAS as estratégias da lista seisoTasks.
             Runnable seisoMasterTask = () ->
             {
-                // Log de início da execução do conjunto de tarefas Seisō.
-                logger.info("[AGENDADOR] Executando conjunto de tarefas Seisō...");
-                // Itera sobre cada estratégia na lista de tarefas Seisō.
+                logger.info("[AGENDADOR] Executando tarefas Seiso...");
+
+                //Execução de todas as strategies de Seiso
                 for (ScheduledTaskStrategy task : seisoTasks)
                 {
-                    // Manda a estratégia executar sua lógica.
-                    task.execute(config);
+                    try
+                    {
+                        task.execute(config);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error("Erro executando tarefa Seiso: {}", task.getClass().getSimpleName(), e);
+                    }
                 }
             };
-            // Agenda a tarefa principal do Seisō.
-            scheduler.scheduleAtFixedRate(seisoMasterTask, seisoConfig.getInitialDelay(), seisoConfig.getPeriod(), seisoConfig.getTimeUnit());
-            // Log para confirmar o agendamento.
-            logger.info("Conjunto de tarefas Seisō agendado para executar a cada {} {}", seisoConfig.getPeriod(), seisoConfig.getTimeUnit());
-        } else
+
+            scheduler.scheduleAtFixedRate(
+                    seisoMasterTask,
+                    seisoConfig.getInitialDelay(),
+                    seisoConfig.getPeriod(),
+                    seisoConfig.getTimeUnit()
+            );
+
+            logger.info("Seiso agendado: {} {}", seisoConfig.getPeriod(), seisoConfig.getTimeUnit());
+        }
+        else
         {
             // Log para informar que o módulo Seisō está desabilitado.
             logger.info("Módulo de tarefas Seisō está desabilitado na configuração.");
@@ -145,5 +167,22 @@ public class ScheduledTaskService
         logger.info("Encerrando o agendador de tarefas...");
         // Comando para encerrar o scheduler.
         scheduler.shutdown();
+
+        try
+        {
+            //Aguarda 30s para tarefas terminarem
+            if (!scheduler.awaitTermination(30, TimeUnit.SECONDS))
+            {
+                scheduler.shutdownNow();
+                logger.warn("Agendador forçado a parar.");
+            }
+        }
+        catch (InterruptedException e)
+        {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        logger.info("Agendador encerrado.");
     }
 }
