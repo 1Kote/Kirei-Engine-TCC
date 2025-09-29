@@ -6,6 +6,9 @@
         </Console>
     </Appenders>
     <Loggers>
+        <!-- Debug apenas para DuplicateDetectionStrategy -->
+        <Logger name="br.com.tcc.kireiengine.strategy.DuplicateDetectionStrategy" level="debug"/>
+
         <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>

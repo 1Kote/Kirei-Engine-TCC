@@ -3,9 +3,11 @@ package br.com.tcc.kireiengine.service;
 import br.com.tcc.kireiengine.config.model.Configuration;
 import br.com.tcc.kireiengine.config.model.SeiriConfig;
 import br.com.tcc.kireiengine.config.model.SeisoConfig;
+import br.com.tcc.kireiengine.config.model.DuplicateDetectionConfig;
 import br.com.tcc.kireiengine.strategy.ScheduledTaskStrategy;
 import br.com.tcc.kireiengine.strategy.SeiriOldFilesStrategy;
 import br.com.tcc.kireiengine.strategy.SeisoTempFoldersStrategy;
+import br.com.tcc.kireiengine.strategy.DuplicateDetectionStrategy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,65 +22,47 @@ import java.util.concurrent.TimeUnit;
  */
 public class ScheduledTaskService
 {
-    // Logger para registrar as operações deste serviço.
     private static final Logger logger = LogManager.getLogger(ScheduledTaskService.class);
-    // Armazena a configuração completa da aplicação.
     private final Configuration config;
-    // Serviço do Java para executar tarefas de forma agendada em uma thread de background.
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    // Lista para armazenar as estratégias de tarefas do Seiri.
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2); // Pool para múltiplas tarefas
     private final List<ScheduledTaskStrategy> seiriTasks = new ArrayList<>();
-    // Lista para armazenar as estratégias de tarefas do Seisō.
     private final List<ScheduledTaskStrategy> seisoTasks = new ArrayList<>();
+    private final List<ScheduledTaskStrategy> duplicateTasks = new ArrayList<>();
 
-    /**
-     * Construtor do serviço.
-     * @param config O objeto de configuração.
-     */
     public ScheduledTaskService(Configuration config)
     {
-        // Atribui a configuração recebida à variável da classe.
         this.config = config;
-        // Chama o método para popular as listas de estratégias.
         initializeStrategies();
     }
 
     /**
-     * Inicializa e popula as listas de estratégias de tarefas.
-     * É aqui que "instalamos" as regras de negócio que o agendador irá executar.
+     * Inicializa strategies disponíveis
      */
     private void initializeStrategies()
     {
         this.seiriTasks.add(new SeiriOldFilesStrategy());
-        this.seisoTasks.add(new SeisoTempFoldersStrategy()); // CORREÇÃO: Adiciona strategy faltante
+        this.seisoTasks.add(new SeisoTempFoldersStrategy());
+        this.duplicateTasks.add(new DuplicateDetectionStrategy());
     }
 
-    /**
-     * Inicia o agendador de tarefas.
-     * Lê as configurações de agendamento do config.json e programa a execução
-     * das listas de estratégias.
-     */
     public void startScheduler()
     {
-        // Log para indicar o início do serviço de agendamento.
-        logger.info("Iniciando o agendador de tarefas (com Strategy)...");
-        // Chama os métodos para agendar as tarefas de Seiri e Seisō.
+        logger.info("Iniciando agendador de tarefas...");
         scheduleSeiriTasks();
         scheduleSeisoTasks();
+        scheduleDuplicateTasks();
     }
 
     /**
-     * Agenda a execução de todas as estratégias de Seiri.
+     * Agenda tarefas Seiri
      */
     private void scheduleSeiriTasks()
     {
-        // Obtém a configuração específica do Seiri.
         SeiriConfig seiriConfig = config.getSeiriConfig();
 
         //Validação se Seiri está habilitado
         if (seiriConfig != null && seiriConfig.isEnabled())
         {
-            // Cria um Runnable (uma tarefa) que irá executar TODAS as estratégias da lista seiriTasks.
             Runnable seiriMasterTask = () ->
             {
                 logger.info("[AGENDADOR] Executando tarefas Seiri...");
@@ -117,13 +101,11 @@ public class ScheduledTaskService
      */
     private void scheduleSeisoTasks()
     {
-        // Obtém a configuração específica do Seisō.
         SeisoConfig seisoConfig = config.getSeisoConfig();
 
         //Validação se Seiso está habilitado
         if (seisoConfig != null && seisoConfig.isEnabled())
         {
-            // Cria um Runnable que irá executar TODAS as estratégias da lista seisoTasks.
             Runnable seisoMasterTask = () ->
             {
                 logger.info("[AGENDADOR] Executando tarefas Seiso...");
@@ -153,19 +135,16 @@ public class ScheduledTaskService
         }
         else
         {
-            // Log para informar que o módulo Seisō está desabilitado.
-            logger.info("Módulo de tarefas Seisō está desabilitado na configuração.");
+            logger.info("Seiso desabilitado.");
         }
     }
 
     /**
-     * Encerra o serviço de agendamento.
+     * Para o agendador graciosamente
      */
     public void stopScheduler()
     {
-        // Log para indicar o início do processo de encerramento.
-        logger.info("Encerrando o agendador de tarefas...");
-        // Comando para encerrar o scheduler.
+        logger.info("Parando agendador...");
         scheduler.shutdown();
 
         try
@@ -184,5 +163,48 @@ public class ScheduledTaskService
         }
 
         logger.info("Agendador encerrado.");
+    }
+
+    /**
+     * Agenda tarefas de detecção de duplicados
+     */
+    private void scheduleDuplicateTasks()
+    {
+        DuplicateDetectionConfig duplicateConfig = config.getDuplicateDetectionConfig();
+
+        //Validação se detecção está habilitada
+        if (duplicateConfig != null && duplicateConfig.isEnabled())
+        {
+            Runnable duplicateTask = () ->
+            {
+                logger.info("[AGENDADOR] Executando detecção de duplicados...");
+
+                //Execução de todas as strategies de duplicados
+                for (ScheduledTaskStrategy task : duplicateTasks)
+                {
+                    try
+                    {
+                        task.execute(config);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error("Erro executando detecção de duplicados: {}", task.getClass().getSimpleName(), e);
+                    }
+                }
+            };
+
+            scheduler.scheduleAtFixedRate(
+                    duplicateTask,
+                    duplicateConfig.getInitialDelay(),
+                    duplicateConfig.getPeriod(),
+                    duplicateConfig.getTimeUnit()
+            );
+
+            logger.info("Detecção de duplicados agendada: {} {}", duplicateConfig.getPeriod(), duplicateConfig.getTimeUnit());
+        }
+        else
+        {
+            logger.info("Detecção de duplicados desabilitada.");
+        }
     }
 }

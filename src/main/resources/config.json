@@ -1,51 +1,57 @@
 {
   "monitorFolders": [
-    "/Users/danielnascimento/Downloads",
-    "/Users/danielnascimento/Desktop"
+    "/Users/danielnascimento/Desktop/KireiTest/Input"
   ],
   "seitonRules": [
     {
-      "name": "Documentos",
-      "extensions": ["pdf", "docx", "pptx", "xlsx", "txt", "pages"],
-      "destination": "/Users/danielnascimento/Documents/KireiEngine_Organizados/Documentos"
+      "name": "Documentos_Teste",
+      "extensions": ["pdf", "docx", "txt"],
+      "destination": "/Users/danielnascimento/Desktop/KireiTest/Output/Documentos"
     },
     {
-      "name": "Imagens",
-      "extensions": ["png", "jpg", "jpeg", "gif", "bmp", "heic"],
-      "destination": "/Users/danielnascimento/Pictures/KireiEngine_Organizados/Imagens"
-    },
-    {
-      "name": "Instaladores",
-      "extensions": ["dmg", "pkg", "zip"],
-      "destination": "/Users/danielnascimento/Downloads/KireiEngine_Organizados/Instaladores"
+      "name": "Imagens_Teste",
+      "extensions": ["png", "jpg", "jpeg"],
+      "destination": "/Users/danielnascimento/Desktop/KireiTest/Output/Imagens"
     }
   ],
   "seiriConfig": {
     "enabled": true,
-    "initialDelay": 1,
-    "period": 1,
+    "initialDelay": 2,
+    "period": 5,
     "timeUnit": "MINUTES",
     "rules": {
       "moveFilesNotAccessedForDays": {
         "enabled": true,
-        "days": 30,
-        "destination": "/Users/danielnascimento/Documents/KireiEngine_Quarentena/Ficheiros_Antigos"
+        "days": 1,
+        "destination": "/Users/danielnascimento/Desktop/KireiTest/Quarentena"
       }
     }
   },
   "seisoConfig": {
-    "enabled": true,
-    "initialDelay": 1,
-    "period": 2,
+    "enabled": false,
+    "initialDelay": 10,
+    "period": 10,
     "timeUnit": "MINUTES",
     "rules": {
       "cleanTemporaryFolders": {
-        "enabled": true,
+        "enabled": false,
         "folders": [
-          "/Users/danielnascimento/Library/Caches",
-          "/tmp"
+          "/Users/danielnascimento/Desktop/KireiTest/TempFolder"
         ]
       }
+    }
+  },
+  "duplicateDetectionConfig": {
+    "enabled": true,
+    "initialDelay": 1,
+    "period": 3,
+    "timeUnit": "MINUTES",
+    "rules": {
+      "minFileSizeBytes": 10,
+      "maxFileSizeBytes": 104857600,
+      "autoRemove": false,
+      "duplicatesDestination": "/Users/danielnascimento/Desktop/KireiTest/Duplicados",
+      "keepStrategy": "NEWEST"
     }
   }
 }

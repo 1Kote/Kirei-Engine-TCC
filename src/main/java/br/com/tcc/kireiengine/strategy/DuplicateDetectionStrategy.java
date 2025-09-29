@@ -15,7 +15,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Strategy para detectar arquivos duplicados por hash
+ * Strategy para detecção e processamento de arquivos duplicados
  */
 public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
 {
@@ -37,6 +37,7 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
         }
 
         logger.info("[DUPLICATE DETECTION] Iniciando varredura de duplicados...");
+        logger.info("DUPLICATE DETECTION: Pastas a escanear: {}", config.getMonitorFolders());
 
         //Reset dos contadores
         duplicateMap.clear();
@@ -48,7 +49,22 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
         //Escaneamento de todas as pastas monitoradas
         for (String folderPath : config.getMonitorFolders())
         {
-            scanDirectoryForDuplicates(Paths.get(folderPath), duplicateConfig.getRules());
+            logger.info("DUPLICATE DETECTION: Escaneando pasta: {}", folderPath);
+            Path folderPathObj = Paths.get(folderPath);
+
+            if (Files.notExists(folderPathObj))
+            {
+                logger.warn("DUPLICATE DETECTION: Pasta não existe: {}", folderPath);
+                continue;
+            }
+
+            if (!Files.isDirectory(folderPathObj))
+            {
+                logger.warn("DUPLICATE DETECTION: Não é um diretório: {}", folderPath);
+                continue;
+            }
+
+            scanDirectoryForDuplicates(folderPathObj, duplicateConfig.getRules());
         }
 
         long scanTime = System.currentTimeMillis() - startTime;
@@ -64,7 +80,7 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
     {
         try
         {
-            Files.walkFileTree(directory, new FileVisitor<Path>()
+            Files.walkFileTree(directory, new FileVisitor<>()
             {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
@@ -75,10 +91,17 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
                 {
+                    logger.debug("DUPLICATE DETECTION: Encontrado arquivo: {}", file);
+
                     //Validação se arquivo é relevante para análise
                     if (isRelevantFile(file, attrs, rules))
                     {
+                        logger.debug("DUPLICATE DETECTION: Arquivo relevante, processando: {}", file);
                         processFile(file, attrs);
+                    }
+                    else
+                    {
+                        logger.debug("DUPLICATE DETECTION: Arquivo ignorado: {} (tamanho: {} bytes)", file, attrs.size());
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -230,8 +253,8 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
                 long wastedSpace = fileSize * (files.size() - 1); // -1 porque um deve ser mantido
                 totalWastedSpace += wastedSpace;
 
-                logger.warn("DUPLICADOS ENCONTRADOS ({}): {} MB desperdiçados",
-                        files.size(), wastedSpace / (1024 * 1024));
+                logger.warn("DUPLICADOS ENCONTRADOS ({}): {} bytes desperdiçados",
+                        files.size(), wastedSpace);
 
                 //Log dos caminhos dos duplicados
                 for (FileInfo file : files)
@@ -253,14 +276,14 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
         logger.info("Espaço total escaneado: {} MB", totalScannedSize.get() / (1024 * 1024));
         logger.info("Grupos de duplicados: {}", duplicateGroups);
         logger.info("Arquivos duplicados: {}", totalDuplicateFiles);
-        logger.info("Espaço desperdiçado: {} MB", totalWastedSpace / (1024 * 1024));
+        logger.info("Espaço desperdiçado: {} bytes ({} MB)", totalWastedSpace, totalWastedSpace / (1024 * 1024));
         logger.info("Tempo de escaneamento: {}ms", scanTimeMs);
 
         //Calcula percentual de duplicação
         if (totalScannedSize.get() > 0)
         {
             double duplicatePercentage = (totalWastedSpace * 100.0) / totalScannedSize.get();
-            logger.info("Percentual de duplicação: {:.1f}%", duplicatePercentage);
+            logger.info("Percentual de duplicação: " + String.format("%.1f", duplicatePercentage) + "%");
         }
     }
 
@@ -352,10 +375,10 @@ public class DuplicateDetectionStrategy implements ScheduledTaskStrategy
     }
 
     /**
-     * Classe para armazenar informações de arquivo
+     * Record para armazenar informações de arquivo
      */
     private record FileInfo(Path path, long size, long lastModified)
     {
-        //A classe record gera automaticamente os getters, equals, hashCode, toString e o construtor.
+        //Record gera automaticamente: constructor, getters, equals, hashCode, toString
     }
 }
